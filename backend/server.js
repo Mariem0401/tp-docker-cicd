@@ -1,85 +1,64 @@
-// backend/server.js
-const express = require("express");
-const cors = require("cors");
-const mongoose = require("mongoose");
-
+const express = require("express"); // Framework web
+const cors = require("cors"); // Gestion CORS
+const { Pool } = require("pg"); // Client PostgreSQL
 const app = express();
-const PORT = process.env.PORT || 3000;
-const mongoURL = process.env.MONGO_URL || 'mongodb://database:27017/mydb';
+const PORT = process.env.PORT || 3000; // Port configurable
 
+// Configuration de la connexion à la base de données
+const pool = new Pool({
+  host: process.env.DB_HOST || "db",
+  port: process.env.DB_PORT || 5432,
+  user: process.env.DB_USER || "admin",
+  password: process.env.DB_PASSWORD || "secret",
+  database: process.env.DB_NAME || "mydb",
+});
+
+// MIDDLEWARE CORS : Autorise les requêtes cross-origin
 app.use(cors({
   origin: [
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:*"
+    'http://localhost:8080', // Frontend via port hôte
+    'http://127.0.0.1:8080', // Alternative localhost
+    'http://localhost:*',    // Tous ports localhost (DEV SEULEMENT)
+    'http://backend'         // Nom service Docker (tests internes)
   ],
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"]
+  methods: ['GET', 'POST', 'OPTIONS'], // Méthodes HTTP autorisées
+  allowedHeaders: ['Content-Type']    // Headers autorisés
 }));
-app.use(express.json());
 
-// Connexion MongoDB avec retry
-const connectWithRetry = () => {
-  mongoose.connect(mongoURL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  })
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => {
-    console.error("❌ MongoDB connection error, retrying in 5s:", err.message);
-    setTimeout(connectWithRetry, 5000); // réessaie toutes les 5 secondes
-  });
-};
-connectWithRetry();
-console.log("test modifiecation");
-
-// Schéma / modèle simple
-const MessageSchema = new mongoose.Schema({
-  text: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
-});
-const Message = mongoose.model("Message", MessageSchema);
-
-// Routes
-// -----------------------------------------------------
-// MODIFICATION APPLIQUÉE ICI : Utilise ping pour un test actif
-app.get("/api/health", async (req, res) => {
-    try {
-        // Tentative d'un ping sur la base de données
-        await mongoose.connection.db.admin().ping();
-        // Si le ping réussit, la connexion est valide
-        res.status(200).json({ status: "OK", db: "connected" });
-    } catch (err) {
-        // Si le ping échoue, la DB n'est pas prête ou accessible
-        console.error("Health Check failed:", err.message);
-        res.status(503).json({ status: "ERROR", db: "disconnected", reason: err.message });
-    }
-});
-// -----------------------------------------------------
-
+// ROUTE API PRINCIPALE
 app.get("/api", (req, res) => {
-  res.json({ message: "Hello from Backend!", success: true });
+  res.json({
+    message: "Hello from Backend!",
+    timestamp: new Date().toISOString(),
+    client: req.get('Origin') || 'unknown',
+    success: true
+  });
 });
 
-app.get("/api/messages", async (req, res) => {
+// ROUTE DATABASE : Récupérer les données de la base
+app.get("/db", async (req, res) => {
   try {
-    const msgs = await Message.find().sort({ createdAt: -1 });
-    res.json(msgs);
+    const result = await pool.query("SELECT * FROM users");
+    // Correction de la structure JSON (suppression des lignes inutiles)
+    res.json({
+      message: "Data from Database",
+      data: result.rows,
+      timestamp: new Date().toISOString(),
+      success: true
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({
+      message: "Database error",
+      error: err.message,
+      success: false
+    });
   }
 });
 
-app.post("/api/messages", async (req, res) => {
-  try {
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ success: false, error: "text required" });
-    const msg = new Message({ text });
-    await msg.save();
-    res.json({ success: true, msg });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+// DÉMARRAGE SERVEUR
+app.listen(PORT, () => {
+  // Correction de la syntaxe d'interpolation de chaîne (utilisation des backticks `)
+  console.log(`🚀 Backend listening on port ${PORT}`);
+  console.log(`API endpoint: http://localhost:${PORT}/api`);
+  console.log(`DB endpoint: http://localhost:${PORT}/db`);
 });
-
-app.listen(PORT, () => console.log(`🚀 Backend running on port ${PORT}`));
