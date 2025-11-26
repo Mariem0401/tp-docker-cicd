@@ -13,7 +13,7 @@ app.use(cors({
     "http://127.0.0.1:8080",
     "http://localhost:*"
   ],
-  methods: ["GET","POST","OPTIONS"],
+  methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type"]
 }));
 app.use(express.json());
@@ -32,6 +32,7 @@ const connectWithRetry = () => {
 };
 connectWithRetry();
 console.log("test modifiecation");
+
 // Schéma / modèle simple
 const MessageSchema = new mongoose.Schema({
   text: { type: String, required: true },
@@ -40,6 +41,17 @@ const MessageSchema = new mongoose.Schema({
 const Message = mongoose.model("Message", MessageSchema);
 
 // Routes
+// Nouvelle route pour le Health Check de la base de données
+app.get("/api/health", (req, res) => {
+    // 1 signifie que Mongoose est connecté à MongoDB
+    if (mongoose.connection.readyState === 1) {
+        res.status(200).json({ status: "OK", db: "connected" });
+    } else {
+        // 503 Service Unavailable si la connexion n'est pas établie
+        res.status(503).json({ status: "ERROR", db: "disconnected" });
+    }
+});
+
 app.get("/api", (req, res) => {
   res.json({ message: "Hello from Backend!", success: true });
 });
@@ -66,4 +78,3 @@ app.post("/api/messages", async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`🚀 Backend running on port ${PORT}`));
-
