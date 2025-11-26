@@ -1,5 +1,6 @@
-# Utiliser l'image officielle MongoDB
-FROM mongo:4.4
+FROM mysql:8.0
 
-# Copier le script d'initialisation dans le conteneur
-COPY mongo-init.js /docker-entrypoint-initdb.d/
+ENV MYSQL_ROOT_PASSWORD=root
+ENV MYSQL_DATABASE=mydb
+
+COPY sql.init /docker-entrypoint-initdb.d/
