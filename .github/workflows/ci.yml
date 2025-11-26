@@ -37,6 +37,7 @@ jobs:
         run: |
           echo "Attente du backend (max 60s)..."
           for i in {1..30}; do
+            # Teste la route /api de base pour s'assurer que le service est en ligne.
             if curl -f http://localhost:3000/api >/dev/null 2>&1; then
               echo "Backend est prêt !"
               break
@@ -55,10 +56,11 @@ jobs:
           echo "Test de /api"
           curl -f http://localhost:3000/api
 
-      - name: Test DB Endpoint # <-- MODIFICATION APPLIQUÉE ICI
+      - name: Test DB Health Check # <-- NOM DE L'ÉTAPE MIS À JOUR
         run: |
-          echo "Test de /api/db"
-          curl -f http://localhost:3000/api/db
+          echo "Test de /api/health"
+          # Cible la nouvelle route de Health Check pour la BDD
+          curl -f http://localhost:3000/api/health
 
       - name: Show logs on failure
         if: failure()
