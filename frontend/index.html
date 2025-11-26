@@ -1,86 +1,109 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestion des utilisateurs</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestion des utilisateurs</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>👥 Gestion des utilisateurs</h1>
+  <div class="container">
+    <h1>👥 Gestion des utilisateurs</h1>
 
-    <form id="userForm">
-      <input id="nameInput" type="text" placeholder="Nom" required />
-      <input id="emailInput" type="email" placeholder="Email" required />
-      <button type="submit">Ajouter</button>
-    </form>
+    <form id="userForm">
+      <input id="nameInput" type="text" placeholder="Nom" required />
+      <input id="emailInput" type="email" placeholder="Email" required />
+      <button type="submit">Ajouter</button>
+    </form>
 
-    <h2>Utilisateurs enregistrés</h2>
-    <div id="result">Chargement...</div>
-  </div>
+    <h2>Utilisateurs enregistrés</h2>
+    <div id="result">Chargement...</div>
+  </div>
 
-  <script>
-    async function fetchUsers() {
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = 'Chargement...';
-      try {
-        const res = await fetch('http://localhost:3000/api/users');
-        const data = await res.json();
-        if (!Array.isArray(data)) {
-          resultDiv.innerHTML = '<p>Erreur: réponse inattendue.</p>';
-          return;
-        }
-        if (data.length === 0) {
-          resultDiv.innerHTML = '<p>Aucun utilisateur pour l’instant.</p>';
-          return;
-        }
-        const list = data
-          .map(
-            (u) =>
-              `<li><strong>${escapeHtml(u.name)}</strong> — ${escapeHtml(u.email)}</li>`
-          )
-          .join('');
-        resultDiv.innerHTML = `<ul>${list}</ul>`;
-      } catch (err) {
-        resultDiv.innerHTML = `<p style="color:red">Erreur : ${err.message}</p>`;
-        console.error('Fetch error:', err);
-      }
-    }
+  <script>
+    // Définition de l'URL de base du backend déployé sur Render
+    const API_BASE_URL = 'https://tp-docker-cicd-onlr.onrender.com';
 
-    async function addUser(ev) {
-      ev.preventDefault();
-      const name = document.getElementById('nameInput').value.trim();
-      const email = document.getElementById('emailInput').value.trim();
-      if (!name || !email) return;
-      try {
-        const res = await fetch('http://localhost:3000/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById('userForm').reset();
-          fetchUsers();
-        } else {
-          alert('Erreur : ' + (data.error || 'Inconnue'));
-        }
-      } catch (err) {
-        alert('Erreur réseau : ' + err.message);
-      }
-    }
+    async function fetchUsers() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = 'Chargement...';
+      try {
+        // CHANGEMENT ICI : Utilisation de l'URL Render pour la requête GET
+        const res = await fetch(`${API_BASE_URL}/api/users`);
+        
+        // Vérification du statut HTTP pour les erreurs (comme 404, 500, etc.)
+        if (!res.ok) {
+          throw new Error(`Échec de la récupération (Statut: ${res.status})`);
+        }
 
-    function escapeHtml(str) {
-      return str.replace(/[&<>"']/g, (m) => {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
-      });
-    }
+        const data = await res.json();
+        
+        if (!Array.isArray(data)) {
+          resultDiv.innerHTML = '<p>Erreur: réponse inattendue du serveur.</p>';
+          return;
+        }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('userForm').addEventListener('submit', addUser);
-      fetchUsers();
-    });
-  </script>
+        if (data.length === 0) {
+          resultDiv.innerHTML = '<p>Aucun utilisateur pour l’instant.</p>';
+          return;
+        }
+
+        const list = data
+          .map(
+            (u) =>
+              `<li><strong>${escapeHtml(u.name)}</strong> — ${escapeHtml(u.email)}</li>`
+          )
+          .join('');
+        resultDiv.innerHTML = `<ul>${list}</ul>`;
+      } catch (err) {
+        // L'erreur ici sera probablement l'ancienne "Failed to fetch" si l'URL est mauvaise, 
+        // ou l'erreur avec le statut HTTP que nous avons ajoutée ci-dessus.
+        resultDiv.innerHTML = `<p style="color:red">Erreur de connexion à l'API : ${err.message}</p>`;
+        console.error('Fetch error:', err);
+      }
+    }
+
+    async function addUser(ev) {
+      ev.preventDefault();
+      const name = document.getElementById('nameInput').value.trim();
+      const email = document.getElementById('emailInput').value.trim();
+      if (!name || !email) return;
+      try {
+        // CHANGEMENT ICI : Utilisation de l'URL Render pour la requête POST
+        const res = await fetch(`${API_BASE_URL}/api/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email }),
+        });
+        
+        // Vérification du statut HTTP pour les erreurs
+        if (!res.ok) {
+          throw new Error(`Échec de l'ajout (Statut: ${res.status})`);
+        }
+        
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('userForm').reset();
+          fetchUsers(); // Recharger la liste des utilisateurs
+        } else {
+          alert('Erreur : ' + (data.error || 'Inconnue'));
+        }
+      } catch (err) {
+        // Gérer les erreurs de réseau ou les erreurs HTTP capturées ci-dessus
+        alert('Erreur réseau ou API : ' + err.message);
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('userForm').addEventListener('submit', addUser);
+      fetchUsers(); // Lancer la récupération initiale
+    });
+  </script>
 </body>
 </html>
