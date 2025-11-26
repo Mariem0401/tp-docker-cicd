@@ -41,16 +41,21 @@ const MessageSchema = new mongoose.Schema({
 const Message = mongoose.model("Message", MessageSchema);
 
 // Routes
-// Nouvelle route pour le Health Check de la base de données
-app.get("/api/health", (req, res) => {
-    // 1 signifie que Mongoose est connecté à MongoDB
-    if (mongoose.connection.readyState === 1) {
+// -----------------------------------------------------
+// MODIFICATION APPLIQUÉE ICI : Utilise ping pour un test actif
+app.get("/api/health", async (req, res) => {
+    try {
+        // Tentative d'un ping sur la base de données
+        await mongoose.connection.db.admin().ping();
+        // Si le ping réussit, la connexion est valide
         res.status(200).json({ status: "OK", db: "connected" });
-    } else {
-        // 503 Service Unavailable si la connexion n'est pas établie
-        res.status(503).json({ status: "ERROR", db: "disconnected" });
+    } catch (err) {
+        // Si le ping échoue, la DB n'est pas prête ou accessible
+        console.error("Health Check failed:", err.message);
+        res.status(503).json({ status: "ERROR", db: "disconnected", reason: err.message });
     }
 });
+// -----------------------------------------------------
 
 app.get("/api", (req, res) => {
   res.json({ message: "Hello from Backend!", success: true });
