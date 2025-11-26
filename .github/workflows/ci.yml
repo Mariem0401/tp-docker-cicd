@@ -37,8 +37,6 @@ jobs:
         run: |
           echo "Attente du backend (max 60s)..."
           for i in {1..30}; do
-            # Tentative de requête curl vers l'API. -f fait échouer curl si le statut HTTP est 4xx ou 5xx.
-            # >/dev/null 2>&1 supprime toute sortie standard ou d'erreur.
             if curl -f http://localhost:3000/api >/dev/null 2>&1; then
               echo "Backend est prêt !"
               break
@@ -47,7 +45,6 @@ jobs:
             sleep 2
           done
           
-          # Vérifie si la boucle a atteint la fin (timeout)
           if [ $i -eq 30 ]; then
             echo "Timeout : backend non démarré"
             exit 1
@@ -58,10 +55,10 @@ jobs:
           echo "Test de /api"
           curl -f http://localhost:3000/api
 
-      - name: Test DB Endpoint
+      - name: Test DB Endpoint # <-- MODIFICATION APPLIQUÉE ICI
         run: |
-          echo "Test de /db"
-          curl -f http://localhost:3000/db
+          echo "Test de /api/db"
+          curl -f http://localhost:3000/api/db
 
       - name: Show logs on failure
         if: failure()
